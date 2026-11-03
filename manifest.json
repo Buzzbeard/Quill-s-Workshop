@@ -1,0 +1,13 @@
+
+{
+  "name": "Quill's Workshop",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "action": {
+    "title": "Open Quill's Workshop",
+    "icon": "/icon.svg",
+    "popover": "/index.html",
+    "height": 300,
+    "width": 400
+  }
+}
