@@ -5,7 +5,9 @@
   "manifest_version": 1,
   "action": {
     "title": "Open Quill's Workshop",
-    "icon": "https://buzzbeard.github.io/Quill-s-Workshop/icon.svg",
+  
+"icon": "https://buzzbeard.github.io/Quill-s-Workshop/icon.svg?v=2",
+
     "popover": "https://buzzbeard.github.io/Quill-s-Workshop/index.html",
     "height": 300,
     "width": 400
