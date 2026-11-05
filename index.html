@@ -14,6 +14,13 @@
       padding: 18px;
     }
     h2 { color: #e9b95e; }
+    h3 { margin-bottom: 8px; }
+    input { max-width: 100%; }
+    input[type="url"] {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px;
+    }
     button {
       background: #e9b95e;
       color: #202532;
@@ -21,22 +28,31 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      margin-top: 12px;
+      margin-top: 10px;
     }
-    input { max-width: 100%; }
+    button:disabled { opacity: 0.5; }
+    hr { margin: 20px 0; }
     #status { margin-top: 15px; }
   </style>
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p>Import an image into Owlbear Rodeo.</p>
+  <p>Import images into your Owlbear library.</p>
 
-  <input type="file"
-         id="imageFile"
+  <h3>Import from Computer</h3>
+  <input type="file" id="imageFile"
          accept="image/png,image/jpeg,image/webp">
+  <button id="fileButton" disabled>
+    Connecting...
+  </button>
 
-  <button id="importButton" disabled>
-    Connecting to Owlbear...
+  <hr>
+
+  <h3>Import from Link</h3>
+  <input type="url" id="imageUrl"
+         placeholder="Paste a direct image URL">
+  <button id="linkButton" disabled>
+    Import from Link
   </button>
 
   <p id="status">Initializing workshop...</p>
@@ -45,49 +61,99 @@
     import OBR, { buildImageUpload }
       from "https://esm.sh/@owlbear-rodeo/sdk@3.1.0";
 
-    const button = document.getElementById("importButton");
+    const fileButton = document.getElementById("fileButton");
+    const linkButton = document.getElementById("linkButton");
     const status = document.getElementById("status");
-    const input = document.getElementById("imageFile");
 
     OBR.onReady(() => {
-      button.disabled = false;
-      button.textContent = "Import to Owlbear";
+      fileButton.disabled = false;
+      linkButton.disabled = false;
+      fileButton.textContent = "Import from Computer";
       status.textContent = "Connected to Owlbear!";
     });
 
-    button.addEventListener("click", async () => {
-      const file = input.files[0];
+    async function upload(file) {
+      const data = await file.arrayBuffer();
+      const copy = new File(
+        [data],
+        file.name,
+        { type: file.type }
+      );
+      const image = buildImageUpload(copy).build();
+      await OBR.assets.uploadImages([image], "CHARACTER");
+    }
+
+    fileButton.addEventListener("click", async () => {
+      const file = document.getElementById("imageFile").files[0];
 
       if (!file) {
-        status.textContent = "Please choose an image first.";
+        status.textContent = "Choose an image first.";
         return;
       }
 
-      button.disabled = true;
-      status.textContent = "Preparing image...";
+      fileButton.disabled = true;
+      status.textContent = "Importing image...";
 
       try {
-        const data = await file.arrayBuffer();
-        const copy = new File(
-          [data],
-          file.name,
-          { type: file.type }
-        );
-
-        const upload = buildImageUpload(copy).build();
-
-        status.textContent = "Opening Owlbear asset picker...";
-
-        await OBR.assets.uploadImages(
-          [upload],
-          "CHARACTER"
-        );
-
+        await upload(file);
         status.textContent = "Import process completed!";
       } catch (error) {
         status.textContent = "Error: " + error.message;
       } finally {
-        button.disabled = false;
+        fileButton.disabled = false;
+      }
+    });
+
+    linkButton.addEventListener("click", async () => {
+      const address = document.getElementById("imageUrl").value.trim();
+
+      if (!address) {
+        status.textContent = "Paste an image link first.";
+        return;
+      }
+
+      linkButton.disabled = true;
+      status.textContent = "Retrieving image...";
+
+      try {
+        const url = new URL(address);
+
+        if (!["https:", "http:"].includes(url.protocol)) {
+          throw new Error("Use an HTTP or HTTPS image link.");
+        }
+
+        const response = await fetch(url.href);
+
+        if (!response.ok) {
+          throw new Error("Image request failed.");
+        }
+
+        const blob = await response.blob();
+
+        const allowed = ["image/png", "image/jpeg", "image/webp"];
+        if (!allowed.includes(blob.type)) {
+          throw new Error("Link did not return a supported image.");
+        }
+
+        const extension = {
+          "image/png": "png",
+          "image/jpeg": "jpg",
+          "image/webp": "webp"
+        }[blob.type];
+
+        const file = new File(
+          [blob],
+          "Quill-Import." + extension,
+          { type: blob.type }
+        );
+
+        status.textContent = "Opening Owlbear asset picker...";
+        await upload(file);
+        status.textContent = "Import process completed!";
+      } catch (error) {
+        status.textContent = "Error: " + error.message;
+      } finally {
+        linkButton.disabled = false;
       }
     });
   </script>
