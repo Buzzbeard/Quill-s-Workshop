@@ -42,7 +42,7 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 2.2 — batch drag-and-drop imports</p>
+  <p class="muted" id="workshopVersion">Workshop version 2.3 — consistent image naming</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Paste an Image</h3>
@@ -193,7 +193,8 @@
     function artworkFilename(fallback, extension) {
       const chosen = document.getElementById("artworkName").value.trim()
         .replace(/[^a-z0-9 _-]/gi, "").replace(/\s+/g, "-").slice(0, 80);
-      return (chosen || fallback) + "." + extension;
+      const safeFallback = fallback.replace(/[^a-z0-9 _-]/gi, "").replace(/\s+/g, "-").slice(0, 80) || "Quill-Image";
+      return (chosen || safeFallback) + "." + extension;
     }
     let pasteInProgress = false;
     async function handleImagePaste(event) {
@@ -231,7 +232,7 @@
       } finally {
         pasteInProgress = false;
         pasteZone.removeAttribute("aria-busy");
-        pasteZone.textContent = "Select here and paste your image";
+        pasteZone.textContent = "Paste or drop an image here";
       }
     }
     document.addEventListener("paste", (event) => {
@@ -275,7 +276,7 @@
             const customName = document.getElementById("artworkName").value.trim();
             const fallback = file.name.replace(/\.[^.]+$/, "");
             const filename = customName && files.length > 1
-              ? artworkFilename(fallback, extension).replace(new RegExp("\\." + extension + "$"), "-" + (index + 1) + "." + extension)
+              ? artworkFilename(fallback, extension).slice(0, -(extension.length + 1)) + "-" + (index + 1) + "." + extension
               : artworkFilename(fallback, extension);
             await upload(new File([file], filename, {type:file.type}));
             imported++;
