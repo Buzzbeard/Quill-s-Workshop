@@ -42,14 +42,14 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 2.3 — consistent image naming</p>
+  <p class="muted" id="workshopVersion">Workshop version 2.4 — reliable clipboard workflow</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Paste an Image</h3>
-  <p class="muted">Copy an image and press Ctrl+V (or Cmd+V on Mac), or drag an image file onto the area below.</p>
+  <p class="muted">Copy an image from ChatGPT and press Ctrl+V (or Cmd+V on Mac) in the workshop.</p>
   <label for="artworkName">Artwork name (optional)</label>
   <input type="text" id="artworkName" placeholder="e.g. Lockjaw - Fog Approach" maxlength="100" style="box-sizing:border-box;width:100%;padding:8px;margin:8px 0;background:#fff;color:#202532;border-radius:5px">
-  <div id="pasteZone" tabindex="0" role="textbox" aria-label="Paste or drop an image here">Paste or drop an image here</div>
+  <div id="pasteZone" tabindex="0" role="textbox" aria-label="Paste an image here">Paste an image here</div>
 
   <hr>
 
@@ -232,65 +232,13 @@
       } finally {
         pasteInProgress = false;
         pasteZone.removeAttribute("aria-busy");
-        pasteZone.textContent = "Paste or drop an image here";
+        pasteZone.textContent = "Paste an image here";
       }
     }
     document.addEventListener("paste", (event) => {
       const target = event.target;
       if (target instanceof Element && target.closest('input, textarea, [contenteditable="true"]')) return;
       handleImagePaste(event);
-    });
-
-    pasteZone.addEventListener("dragover", (event) => {
-      if (Array.from(event.dataTransfer?.types || []).includes("Files")) {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "copy";
-      }
-    });
-    pasteZone.addEventListener("drop", async (event) => {
-      event.preventDefault();
-      if (pasteInProgress) {
-        status.textContent = "An image is already being imported. Please wait.";
-        return;
-      }
-      if (!owlBearReady) {
-        status.textContent = "Owlbear is not connected yet.";
-        return;
-      }
-      const files = Array.from(event.dataTransfer?.files || [])
-        .filter(item => ["image/png", "image/jpeg", "image/webp"].includes(item.type));
-      if (!files.length) {
-        status.textContent = "Drop PNG, JPEG, or WebP image files.";
-        return;
-      }
-      pasteInProgress = true;
-      pasteZone.setAttribute("aria-busy", "true");
-      let imported = 0;
-      const failures = [];
-      try {
-        for (const [index, file] of files.entries()) {
-          pasteZone.textContent = "Importing image " + (index + 1) + " of " + files.length + "...";
-          status.textContent = "Sending " + file.name + " to Owlbear...";
-          try {
-            const extension = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[file.type];
-            const customName = document.getElementById("artworkName").value.trim();
-            const fallback = file.name.replace(/\.[^.]+$/, "");
-            const filename = customName && files.length > 1
-              ? artworkFilename(fallback, extension).slice(0, -(extension.length + 1)) + "-" + (index + 1) + "." + extension
-              : artworkFilename(fallback, extension);
-            await upload(new File([file], filename, {type:file.type}));
-            imported++;
-          } catch (error) {
-            failures.push(file.name + ": " + (error?.message || String(error)));
-          }
-        }
-        status.textContent = imported + " of " + files.length + " image(s) imported to Owlbear."
-          + (failures.length ? " Failed: " + failures.join("; ") : "");
-      } finally {
-        pasteInProgress = false;
-        pasteZone.removeAttribute("aria-busy");
-        pasteZone.textContent = "Paste or drop an image here";
-      }
     });
 
     fileButton.addEventListener("click", async () => {
