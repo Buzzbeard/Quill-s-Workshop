@@ -42,12 +42,12 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.9 — clipboard handling refinements</p>
+  <p class="muted" id="workshopVersion">Workshop version 2.0 — drag and drop images</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Paste an Image</h3>
-  <p class="muted">Copy an image and press Ctrl+V (or Cmd+V on Mac) anywhere in the workshop, except text fields. No download needed.</p>
-  <div id="pasteZone" tabindex="0" role="textbox" aria-label="Paste an image here">Select here and paste your image</div>
+  <p class="muted">Copy an image and press Ctrl+V (or Cmd+V on Mac), or drag an image file onto the area below.</p>
+  <div id="pasteZone" tabindex="0" role="textbox" aria-label="Paste an image here">Paste or drop an image here</div>
 
   <hr>
 
@@ -231,6 +231,43 @@
       const target = event.target;
       if (target instanceof Element && target.closest('input, textarea, [contenteditable="true"]')) return;
       handleImagePaste(event);
+    });
+
+    pasteZone.addEventListener("dragover", (event) => {
+      if (Array.from(event.dataTransfer?.types || []).includes("Files")) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }
+    });
+    pasteZone.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      if (pasteInProgress) {
+        status.textContent = "An image is already being imported. Please wait.";
+        return;
+      }
+      if (!owlBearReady) {
+        status.textContent = "Owlbear is not connected yet.";
+        return;
+      }
+      const file = Array.from(event.dataTransfer?.files || [])
+        .find(item => ["image/png", "image/jpeg", "image/webp"].includes(item.type));
+      if (!file) {
+        status.textContent = "Drop a PNG, JPEG, or WebP image file.";
+        return;
+      }
+      pasteInProgress = true;
+      pasteZone.setAttribute("aria-busy", "true");
+      pasteZone.textContent = "Importing dropped image...";
+      try {
+        await upload(file);
+        status.textContent = "Dropped image imported to Owlbear! (" + (file.size / 1024 / 1024).toFixed(2) + " MB)";
+      } catch (error) {
+        status.textContent = "Drop import failed: " + (error?.message || String(error));
+      } finally {
+        pasteInProgress = false;
+        pasteZone.removeAttribute("aria-busy");
+        pasteZone.textContent = "Paste or drop an image here";
+      }
     });
 
     fileButton.addEventListener("click", async () => {
