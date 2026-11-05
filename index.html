@@ -42,7 +42,7 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 2.1 — named image imports</p>
+  <p class="muted" id="workshopVersion">Workshop version 2.2 — batch drag-and-drop imports</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Paste an Image</h3>
@@ -256,22 +256,35 @@
         status.textContent = "Owlbear is not connected yet.";
         return;
       }
-      const file = Array.from(event.dataTransfer?.files || [])
-        .find(item => ["image/png", "image/jpeg", "image/webp"].includes(item.type));
-      if (!file) {
-        status.textContent = "Drop a PNG, JPEG, or WebP image file.";
+      const files = Array.from(event.dataTransfer?.files || [])
+        .filter(item => ["image/png", "image/jpeg", "image/webp"].includes(item.type));
+      if (!files.length) {
+        status.textContent = "Drop PNG, JPEG, or WebP image files.";
         return;
       }
       pasteInProgress = true;
       pasteZone.setAttribute("aria-busy", "true");
-      pasteZone.textContent = "Importing dropped image...";
+      let imported = 0;
+      const failures = [];
       try {
-        const extension = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[file.type];
-        const namedFile = new File([file], artworkFilename(file.name.replace(/\.[^.]+$/, ""), extension), {type:file.type});
-        await upload(namedFile);
-        status.textContent = "Dropped image imported to Owlbear! (" + (file.size / 1024 / 1024).toFixed(2) + " MB)";
-      } catch (error) {
-        status.textContent = "Drop import failed: " + (error?.message || String(error));
+        for (const [index, file] of files.entries()) {
+          pasteZone.textContent = "Importing image " + (index + 1) + " of " + files.length + "...";
+          status.textContent = "Sending " + file.name + " to Owlbear...";
+          try {
+            const extension = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[file.type];
+            const customName = document.getElementById("artworkName").value.trim();
+            const fallback = file.name.replace(/\.[^.]+$/, "");
+            const filename = customName && files.length > 1
+              ? artworkFilename(fallback, extension).replace(new RegExp("\\." + extension + "$"), "-" + (index + 1) + "." + extension)
+              : artworkFilename(fallback, extension);
+            await upload(new File([file], filename, {type:file.type}));
+            imported++;
+          } catch (error) {
+            failures.push(file.name + ": " + (error?.message || String(error)));
+          }
+        }
+        status.textContent = imported + " of " + files.length + " image(s) imported to Owlbear."
+          + (failures.length ? " Failed: " + failures.join("; ") : "");
       } finally {
         pasteInProgress = false;
         pasteZone.removeAttribute("aria-busy");
