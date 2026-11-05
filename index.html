@@ -64,6 +64,8 @@
     <h3 id="inboxTitle">Delivery Inbox</h3>
     <p class="muted">Images sent to Quill\'s Workshop will appear here for your approval once secure delivery is connected.</p>
     <p id="inboxStatus" role="status">No deliveries yet.</p>
+    <div id="deliveryItems"></div>
+    <button id="refreshInbox">Refresh Inbox</button>
   </section>
 
   <p id="status">Initializing workshop...</p>
@@ -75,6 +77,50 @@
     const fileButton = document.getElementById("fileButton");
     const linkButton = document.getElementById("linkButton");
     const status = document.getElementById("status");
+
+
+    const inboxStatus = document.getElementById("inboxStatus");
+    const deliveryItems = document.getElementById("deliveryItems");
+    async function refreshDeliveries() {
+      inboxStatus.textContent = "Checking for deliveries...";
+      deliveryItems.replaceChildren();
+      try {
+        const response = await fetch("./deliveries.json?t=" + Date.now(), {cache:"no-store"});
+        if (!response.ok) throw new Error("Delivery list unavailable");
+        const items = await response.json();
+        if (!Array.isArray(items)) throw new Error("Invalid delivery list");
+        inboxStatus.textContent = items.length ? items.length + " available delivery(s)." : "No deliveries yet.";
+        for (const item of items) {
+          if (typeof item.name !== "string" || typeof item.url !== "string") continue;
+          const url = new URL(item.url, location.href);
+          if (url.protocol !== "https:") continue;
+          const section = document.createElement("div");
+          section.style.padding = "10px 0";
+          const label = document.createElement("p");
+          label.textContent = item.name;
+          const button = document.createElement("button");
+          button.textContent = "Import to Owlbear";
+          button.onclick = async () => {
+            button.disabled = true;
+            status.textContent = "Retrieving delivery...";
+            try {
+              const response = await fetch(url.href);
+              if (!response.ok) throw new Error("Image download failed");
+              const blob = await response.blob();
+              const ext = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[blob.type];
+              if (!ext) throw new Error("Unsupported image format");
+              await upload(new File([blob], item.name.replace(/[^a-z0-9_-]/gi,"-") + "." + ext, {type:blob.type}));
+              status.textContent = "Import process completed!";
+            } catch (error) { status.textContent = "Error: " + error.message; }
+            finally { button.disabled = false; }
+          };
+          section.append(label, button);
+          deliveryItems.append(section);
+        }
+      } catch (error) { inboxStatus.textContent = "Inbox unavailable: " + error.message; }
+    }
+    document.getElementById("refreshInbox").onclick = refreshDeliveries;
+    refreshDeliveries();
 
     OBR.onReady(() => {
       fileButton.disabled = false;
