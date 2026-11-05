@@ -42,11 +42,11 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.7 — paste feedback and duplicate protection</p>
+  <p class="muted" id="workshopVersion">Workshop version 1.8 — easier clipboard paste</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Paste an Image</h3>
-  <p class="muted">Copy an image, select the area below, then press Ctrl+V (or Cmd+V on Mac). No download needed.</p>
+  <p class="muted">Copy an image and press Ctrl+V (or Cmd+V on Mac) anywhere in the workshop, except text fields. No download needed.</p>
   <div id="pasteZone" tabindex="0" role="textbox" aria-label="Paste an image here">Select here and paste your image</div>
 
   <hr>
@@ -189,7 +189,7 @@
 
     const pasteZone = document.getElementById("pasteZone");
     let pasteInProgress = false;
-    pasteZone.addEventListener("paste", async (event) => {
+    async function handleImagePaste(event) {
       event.preventDefault();
       if (pasteInProgress) {
         status.textContent = "An image is already being imported. Please wait.";
@@ -226,6 +226,11 @@
         pasteZone.removeAttribute("aria-busy");
         pasteZone.textContent = "Select here and paste your image";
       }
+    }
+    document.addEventListener("paste", (event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest('input, textarea, [contenteditable="true"]')) return;
+      handleImagePaste(event);
     });
 
     fileButton.addEventListener("click", async () => {
