@@ -36,12 +36,20 @@
     .inbox p { margin-bottom: 0; }
     .muted { color: #c5cbd5; font-size: 14px; }
     #status { margin-top: 15px; }
+    #pasteZone { border: 1px dashed #e9b95e; border-radius: 8px; padding: 14px; cursor: text; }
+    #pasteZone:focus { outline: 2px solid #e9b95e; outline-offset: 2px; }
   </style>
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.5 — connection safeguards</p>
+  <p class="muted" id="workshopVersion">Workshop version 1.6 — paste image support</p>
   <p>Import images into your Owlbear library.</p>
+
+  <h3>Paste an Image</h3>
+  <p class="muted">Copy an image, select the area below, then press Ctrl+V (or Cmd+V on Mac). No download needed.</p>
+  <div id="pasteZone" tabindex="0" role="textbox" aria-label="Paste an image here">Select here and paste your image</div>
+
+  <hr>
 
   <h3>Import from Computer</h3>
   <input type="file" id="imageFile"
@@ -178,6 +186,40 @@
       const image = buildImageUpload(copy).build();
       await OBR.assets.uploadImages([image], "CHARACTER");
     }
+
+    const pasteZone = document.getElementById("pasteZone");
+    pasteZone.addEventListener("paste", async (event) => {
+      event.preventDefault();
+      if (!owlBearReady) {
+        status.textContent = "Owlbear is not connected yet.";
+        return;
+      }
+      const clipboardItems = Array.from(event.clipboardData?.items || []);
+      const imageItem = clipboardItems.find(item => item.kind === "file" && /^image\/(png|jpeg|webp)$/.test(item.type));
+      if (!imageItem) {
+        status.textContent = "No PNG, JPEG, or WebP image found on the clipboard.";
+        return;
+      }
+      const image = imageItem.getAsFile();
+      if (!image) {
+        status.textContent = "Unable to read the pasted image.";
+        return;
+      }
+      pasteZone.setAttribute("aria-busy", "true");
+      pasteZone.textContent = "Importing pasted image...";
+      status.textContent = "Sending pasted image to Owlbear...";
+      try {
+        const extension = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[image.type];
+        const file = new File([image], "Quill-Pasted-Image." + extension, {type:image.type});
+        await upload(file);
+        status.textContent = "Pasted image imported to Owlbear!";
+      } catch (error) {
+        status.textContent = "Paste import failed: " + (error?.message || String(error));
+      } finally {
+        pasteZone.removeAttribute("aria-busy");
+        pasteZone.textContent = "Select here and paste your image";
+      }
+    });
 
     fileButton.addEventListener("click", async () => {
       const file = document.getElementById("imageFile").files[0];
