@@ -40,7 +40,7 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.1 — diagnostic build</p>
+  <p class="muted" id="workshopVersion">Workshop version 1.2 — image validation</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Import from Computer</h3>
@@ -113,9 +113,20 @@
               const ext = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[blob.type];
               if (!ext) throw new Error("Unsupported image format: " + (blob.type || "unknown"));
               if (!blob.size) throw new Error("Downloaded image is empty");
+              stage = "decoding and preparing the image";
+              const bitmap = await createImageBitmap(blob);
+              const minimumWidth = 512;
+              const scale = Math.max(1, minimumWidth / bitmap.width);
+              const canvas = document.createElement("canvas");
+              canvas.width = Math.round(bitmap.width * scale);
+              canvas.height = Math.round(bitmap.height * scale);
+              canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+              bitmap.close();
+              const prepared = await new Promise((resolve, reject) =>
+                canvas.toBlob(result => result ? resolve(result) : reject(new Error("Could not prepare image")), "image/png"));
               stage = "sending the image to Owlbear";
-              status.textContent = "Sending image to Owlbear (" + blob.size + " bytes)...";
-              await upload(new File([blob], item.name.replace(/[^a-z0-9_-]/gi,"-") + "." + ext, {type:blob.type}));
+              status.textContent = "Sending validated image to Owlbear (" + canvas.width + " × " + canvas.height + ")...";
+              await upload(new File([prepared], item.name.replace(/[^a-z0-9_-]/gi,"-") + ".png", {type:"image/png"}));
               status.textContent = "Import process completed!";
             } catch (error) {
               const detail = error && typeof error.message === "string" && error.message
