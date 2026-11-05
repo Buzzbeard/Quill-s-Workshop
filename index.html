@@ -40,7 +40,7 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.3 — delivery inbox improvements</p>
+  <p class="muted" id="workshopVersion">Workshop version 1.4 — original image preservation</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Import from Computer</h3>
@@ -119,18 +119,25 @@
               if (!blob.size) throw new Error("Downloaded image is empty");
               stage = "decoding and preparing the image";
               const bitmap = await createImageBitmap(blob);
-              const minimumWidth = 512;
-              const scale = Math.max(1, minimumWidth / bitmap.width);
-              const canvas = document.createElement("canvas");
-              canvas.width = Math.round(bitmap.width * scale);
-              canvas.height = Math.round(bitmap.height * scale);
-              canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+              const width = bitmap.width;
+              const height = bitmap.height;
+              if (!width || !height) throw new Error("Image has invalid dimensions");
               bitmap.close();
-              const prepared = await new Promise((resolve, reject) =>
-                canvas.toBlob(result => result ? resolve(result) : reject(new Error("Could not prepare image")), "image/png"));
+              let prepared = blob;
+              let outputExtension = ext;
+              if (width < 512) {
+                const canvas = document.createElement("canvas");
+                const scale = 512 / width;
+                canvas.width = Math.round(width * scale);
+                canvas.height = Math.round(height * scale);
+                canvas.getContext("2d").drawImage(await createImageBitmap(blob), 0, 0, canvas.width, canvas.height);
+                prepared = await new Promise((resolve, reject) =>
+                  canvas.toBlob(result => result ? resolve(result) : reject(new Error("Could not prepare image")), "image/png"));
+                outputExtension = "png";
+              }
               stage = "sending the image to Owlbear";
-              status.textContent = "Sending validated image to Owlbear (" + canvas.width + " × " + canvas.height + ")...";
-              await upload(new File([prepared], item.name.replace(/[^a-z0-9_-]/gi,"-") + ".png", {type:"image/png"}));
+              status.textContent = "Sending validated image to Owlbear (" + width + " × " + height + ")...";
+              await upload(new File([prepared], item.name.replace(/[^a-z0-9_-]/gi,"-") + "." + outputExtension, {type:prepared.type}));
               status.textContent = "Import process completed!";
             } catch (error) {
               const detail = error && typeof error.message === "string" && error.message
