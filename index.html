@@ -32,6 +32,9 @@
     }
     button:disabled { opacity: 0.5; }
     hr { margin: 20px 0; }
+    .inbox { border: 1px solid #6b7280; border-radius: 8px; padding: 12px; }
+    .inbox p { margin-bottom: 0; }
+    .muted { color: #c5cbd5; font-size: 14px; }
     #status { margin-top: 15px; }
   </style>
 </head>
@@ -54,6 +57,14 @@
   <button id="linkButton" disabled>
     Import from Link
   </button>
+
+  <hr>
+
+  <section class="inbox" aria-labelledby="inboxTitle">
+    <h3 id="inboxTitle">Delivery Inbox</h3>
+    <p class="muted">Images sent to Quill\'s Workshop will appear here for your approval once secure delivery is connected.</p>
+    <p id="inboxStatus" role="status">No deliveries yet.</p>
+  </section>
 
   <p id="status">Initializing workshop...</p>
 
