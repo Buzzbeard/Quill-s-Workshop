@@ -40,7 +40,7 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.2 — image validation</p>
+  <p class="muted" id="workshopVersion">Workshop version 1.3 — delivery inbox improvements</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Import from Computer</h3>
@@ -63,7 +63,7 @@
 
   <section class="inbox" aria-labelledby="inboxTitle">
     <h3 id="inboxTitle">Delivery Inbox</h3>
-    <p class="muted">Images sent to Quill\'s Workshop will appear here for your approval once secure delivery is connected.</p>
+    <p class="muted">Review available artwork and choose which images to import into Owlbear.</p>
     <p id="inboxStatus" role="status">No deliveries yet.</p>
     <div id="deliveryItems"></div>
     <button id="refreshInbox">Refresh Inbox</button>
@@ -90,8 +90,12 @@
         if (!response.ok) throw new Error("Delivery list unavailable");
         const items = await response.json();
         if (!Array.isArray(items)) throw new Error("Invalid delivery list");
-        inboxStatus.textContent = items.length ? items.length + " available delivery(s)." : "No deliveries yet.";
-        for (const item of items) {
+        const validItems = items.filter(item => {
+          if (typeof item.name !== "string" || typeof item.url !== "string") return false;
+          try { return new URL(item.url, location.href).protocol === "https:"; } catch { return false; }
+        });
+        inboxStatus.textContent = validItems.length ? validItems.length + " available delivery(s)." : "No deliveries yet.";
+        for (const item of validItems) {
           if (typeof item.name !== "string" || typeof item.url !== "string") continue;
           const url = new URL(item.url, location.href);
           if (url.protocol !== "https:") continue;
