@@ -103,15 +103,24 @@
           button.onclick = async () => {
             button.disabled = true;
             status.textContent = "Retrieving delivery...";
+            let stage = "downloading the image";
             try {
-              const response = await fetch(url.href);
-              if (!response.ok) throw new Error("Image download failed");
+              const response = await fetch(url.href, {cache:"no-store"});
+              if (!response.ok) throw new Error("Image download returned HTTP " + response.status);
+              stage = "checking the image";
               const blob = await response.blob();
               const ext = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[blob.type];
-              if (!ext) throw new Error("Unsupported image format");
+              if (!ext) throw new Error("Unsupported image format: " + (blob.type || "unknown"));
+              if (!blob.size) throw new Error("Downloaded image is empty");
+              stage = "sending the image to Owlbear";
+              status.textContent = "Sending image to Owlbear (" + blob.size + " bytes)...";
               await upload(new File([blob], item.name.replace(/[^a-z0-9_-]/gi,"-") + "." + ext, {type:blob.type}));
               status.textContent = "Import process completed!";
-            } catch (error) { status.textContent = "Error: " + error.message; }
+            } catch (error) {
+              const detail = error && typeof error.message === "string" && error.message
+                ? error.message : (typeof error === "string" ? error : JSON.stringify(error) || "No details provided");
+              status.textContent = "Error while " + stage + ": " + detail;
+            }
             finally { button.disabled = false; }
           };
           section.append(label, button);
