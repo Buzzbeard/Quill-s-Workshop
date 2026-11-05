@@ -40,7 +40,7 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.4 — original image preservation</p>
+  <p class="muted" id="workshopVersion">Workshop version 1.5 — connection safeguards</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Import from Computer</h3>
@@ -78,6 +78,7 @@
     const fileButton = document.getElementById("fileButton");
     const linkButton = document.getElementById("linkButton");
     const status = document.getElementById("status");
+    let owlBearReady = false;
 
 
     const inboxStatus = document.getElementById("inboxStatus");
@@ -106,6 +107,10 @@
           const button = document.createElement("button");
           button.textContent = "Import to Owlbear";
           button.onclick = async () => {
+            if (!owlBearReady) {
+              status.textContent = "Waiting for Owlbear connection. Please try again shortly.";
+              return;
+            }
             button.disabled = true;
             status.textContent = "Retrieving delivery...";
             let stage = "downloading the image";
@@ -155,6 +160,7 @@
     refreshDeliveries();
 
     OBR.onReady(() => {
+      owlBearReady = true;
       fileButton.disabled = false;
       linkButton.disabled = false;
       fileButton.textContent = "Import from Computer";
@@ -162,6 +168,7 @@
     });
 
     async function upload(file) {
+      if (!owlBearReady) throw new Error("Owlbear is not connected yet");
       const data = await file.arrayBuffer();
       const copy = new File(
         [data],
