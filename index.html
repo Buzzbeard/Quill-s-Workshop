@@ -42,7 +42,7 @@
 </head>
 <body>
   <h2>Quill's Workshop</h2>
-  <p class="muted" id="workshopVersion">Workshop version 1.8 — easier clipboard paste</p>
+  <p class="muted" id="workshopVersion">Workshop version 1.9 — clipboard handling refinements</p>
   <p>Import images into your Owlbear library.</p>
 
   <h3>Paste an Image</h3>
@@ -190,6 +190,12 @@
     const pasteZone = document.getElementById("pasteZone");
     let pasteInProgress = false;
     async function handleImagePaste(event) {
+      const clipboardItems = Array.from(event.clipboardData?.items || []);
+      const imageItem = clipboardItems.find(item => item.kind === "file" && /^image\/(png|jpeg|webp)$/.test(item.type));
+      if (!imageItem) {
+        if (event.target === pasteZone) status.textContent = "No PNG, JPEG, or WebP image found on the clipboard.";
+        return;
+      }
       event.preventDefault();
       if (pasteInProgress) {
         status.textContent = "An image is already being imported. Please wait.";
@@ -197,12 +203,6 @@
       }
       if (!owlBearReady) {
         status.textContent = "Owlbear is not connected yet.";
-        return;
-      }
-      const clipboardItems = Array.from(event.clipboardData?.items || []);
-      const imageItem = clipboardItems.find(item => item.kind === "file" && /^image\/(png|jpeg|webp)$/.test(item.type));
-      if (!imageItem) {
-        status.textContent = "No PNG, JPEG, or WebP image found on the clipboard.";
         return;
       }
       const image = imageItem.getAsFile();
